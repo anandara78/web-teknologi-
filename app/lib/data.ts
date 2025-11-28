@@ -6,12 +6,47 @@ import {
   InvoicesTable,
   LatestInvoiceRaw,
   Revenue,
+  User,
 } from './definitions';
 import { formatCurrency } from './utils';
 
+
 const sql = postgres(process.env.POSTGRES_URL!, { ssl: 'require' });
 
+// =========================================================================
+// 🔑 FUNGSI BARU: MENGAMBIL USER UNTUK PROSES LOGIN
+// =========================================================================
+
+/**
+ * Mengambil ID dan hash password pengguna berdasarkan email.
+ * Digunakan oleh Server Action 'authenticate'.
+ * @param email Email pengguna yang dimasukkan saat login.
+ * @returns Object User yang berisi ID dan hash password, atau undefined jika tidak ditemukan.
+ */
+export async function getUserByEmail(email: string): Promise<User | undefined> {
+    try {
+        const data = await sql<User[]>`
+            SELECT id, name, email, "password"
+            FROM public.users 
+            WHERE email = ${email}
+        `;
+
+        // Mengembalikan baris pertama atau undefined
+        return data[0];
+        
+    } catch (error) {
+        // Penting: Jangan tampilkan error database secara detail ke pengguna akhir.
+        console.error('Database Error - getUserByEmail:', error);
+        throw new Error('Gagal mengambil data user dari database.');
+    }
+}
+
+// =========================================================================
+// Fungsi-fungsi lama yang tidak diubah
+// =========================================================================
+
 export async function fetchRevenue() {
+// ... (Kode fetchRevenue tidak diubah)
   try {
     // Artificially delay a response for demo purposes.
     // Don't do this in production :)
@@ -31,6 +66,7 @@ export async function fetchRevenue() {
 }
 
 export async function fetchLatestInvoices() {
+// ... (Kode fetchLatestInvoices tidak diubah)
   try {
     const data = await sql<LatestInvoiceRaw[]>`
       SELECT invoices.amount, customers.name, customers.image_url, customers.email, invoices.id
@@ -51,6 +87,7 @@ export async function fetchLatestInvoices() {
 }
 
 export async function fetchCardData() {
+// ... (Kode fetchCardData tidak diubah)
   try {
     // You can probably combine these into a single SQL query
     // However, we are intentionally splitting them to demonstrate
@@ -58,9 +95,9 @@ export async function fetchCardData() {
     const invoiceCountPromise = sql`SELECT COUNT(*) FROM invoices`;
     const customerCountPromise = sql`SELECT COUNT(*) FROM customers`;
     const invoiceStatusPromise = sql`SELECT
-         SUM(CASE WHEN status = 'paid' THEN amount ELSE 0 END) AS "paid",
-         SUM(CASE WHEN status = 'pending' THEN amount ELSE 0 END) AS "pending"
-         FROM invoices`;
+          SUM(CASE WHEN status = 'paid' THEN amount ELSE 0 END) AS "paid",
+          SUM(CASE WHEN status = 'pending' THEN amount ELSE 0 END) AS "pending"
+          FROM invoices`;
 
     const data = await Promise.all([
       invoiceCountPromise,
@@ -87,6 +124,7 @@ export async function fetchCardData() {
 
 const ITEMS_PER_PAGE = 6;
 export async function fetchFilteredInvoices(
+// ... (Kode fetchFilteredInvoices tidak diubah)
   query: string,
   currentPage: number,
 ) {
@@ -122,6 +160,7 @@ export async function fetchFilteredInvoices(
 }
 
 export async function fetchInvoicesPages(query: string) {
+// ... (Kode fetchInvoicesPages tidak diubah)
   try {
     const data = await sql`SELECT COUNT(*)
     FROM invoices
@@ -143,6 +182,7 @@ export async function fetchInvoicesPages(query: string) {
 }
 
 export async function fetchInvoiceById(id: string) {
+// ... (Kode fetchInvoiceById tidak diubah)
   try {
     const data = await sql<InvoiceForm[]>`
       SELECT
@@ -168,6 +208,7 @@ export async function fetchInvoiceById(id: string) {
 }
 
 export async function fetchCustomers() {
+// ... (Kode fetchCustomers tidak diubah)
   try {
     const customers = await sql<CustomerField[]>`
       SELECT
@@ -185,24 +226,25 @@ export async function fetchCustomers() {
 }
 
 export async function fetchFilteredCustomers(query: string) {
+// ... (Kode fetchFilteredCustomers tidak diubah)
   try {
     const data = await sql<CustomersTableType[]>`
-		SELECT
-		  customers.id,
-		  customers.name,
-		  customers.email,
-		  customers.image_url,
-		  COUNT(invoices.id) AS total_invoices,
-		  SUM(CASE WHEN invoices.status = 'pending' THEN invoices.amount ELSE 0 END) AS total_pending,
-		  SUM(CASE WHEN invoices.status = 'paid' THEN invoices.amount ELSE 0 END) AS total_paid
-		FROM customers
-		LEFT JOIN invoices ON customers.id = invoices.customer_id
-		WHERE
-		  customers.name ILIKE ${`%${query}%`} OR
+    SELECT
+      customers.id,
+      customers.name,
+      customers.email,
+      customers.image_url,
+      COUNT(invoices.id) AS total_invoices,
+      SUM(CASE WHEN invoices.status = 'pending' THEN invoices.amount ELSE 0 END) AS total_pending,
+      SUM(CASE WHEN invoices.status = 'paid' THEN invoices.amount ELSE 0 END) AS total_paid
+    FROM customers
+    LEFT JOIN invoices ON customers.id = invoices.customer_id
+    WHERE
+      customers.name ILIKE ${`%${query}%`} OR
         customers.email ILIKE ${`%${query}%`}
-		GROUP BY customers.id, customers.name, customers.email, customers.image_url
-		ORDER BY customers.name ASC
-	  `;
+    GROUP BY customers.id, customers.name, customers.email, customers.image_url
+    ORDER BY customers.name ASC
+    `;
 
     const customers = data.map((customer) => ({
       ...customer,

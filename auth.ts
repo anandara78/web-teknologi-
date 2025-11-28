@@ -2,46 +2,58 @@ import NextAuth from 'next-auth';
 import { authConfig } from './auth.config';
 import Credentials from 'next-auth/providers/credentials';
 import { z } from 'zod';
-import { sql } from '@vercel/postgres';
+// Ganti impor sql dengan impor fungsi yang sudah dibuat
+import { getUserByEmail } from '@/app/lib/data'; 
 import type { User } from '@/app/lib/definitions';
 import bcrypt from 'bcrypt';
 
-async function getUser(email: string): Promise<User | undefined> {
-  try {
-    const user = await sql<User>`SELECT * FROM users WHERE email=${email}`;
-    return user.rows[0];
-  } catch (error) {
-    console.error('Failed to fetch user:', error);
-    throw new Error('Failed to fetch user.');
-  }
-}
+
+// Catatan: Fungsi getUser yang lama dihapus, kita pakai getUserByEmail dari /lib/data
+// Pastikan getUserByEmail di /lib/data.ts Anda mengambil id, name, email, dan "password".
+
 
 export const { auth, signIn, signOut, handlers } = NextAuth({
   ...authConfig,
   providers: [
     Credentials({
       name: 'credentials',
-      credentials: {
-        email: { label: "Email", type: "email" },
-        password: { label: "Password", type: "password" }
-      },
+      // Jika Anda tidak menggunakan default, ini opsional
+      // credentials: {
+      //   email: { label: "Email", type: "email" },
+      //   password: { label: "Password", type: "password" }
+      // },
+      
       async authorize(credentials) {
+        // 1. Validasi Input
         const parsedCredentials = z
           .object({ 
             email: z.string().email(), 
-            password: z.string().min(6) 
+            password: z.string().min(1) // Ubah min(6) menjadi min(1) karena password angka mungkin pendek
           })
           .safeParse(credentials);
 
         if (parsedCredentials.success) {
           const { email, password } = parsedCredentials.data;
-          const user = await getUser(email);
-          if (!user) return null;
+          
+          // 2. Ambil User dari Database
+          const user = await getUserByEmail(email); // Menggunakan fungsi dari /lib/data.ts
+          if (!user) {
+            console.log('User not found');
+            return null;
+          }
+          
+          // 3. Verifikasi Password
           const passwordsMatch = await bcrypt.compare(password, user.password);
 
-          if (passwordsMatch) return user;
+          if (passwordsMatch) {
+            // 4. Sukses: HAPUS hash password sebelum disimpan ke sesi
+            // Menggunakan rest operator untuk menghilangkan properti 'password'
+            const { password, ...userWithoutPassword } = user;
+            return userWithoutPassword; 
+          }
         }
 
+        // 5. Gagal
         console.log('Invalid credentials');
         return null;
       },
