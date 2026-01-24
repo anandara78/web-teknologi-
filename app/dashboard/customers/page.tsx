@@ -1,3 +1,26 @@
-export default function Page() {
-  return <p>Customers Page</p>;
+import RevenueChart from '@/app/ui/dashboard/revenue-chart';
+import LatestInvoices from '@/app/ui/dashboard/latest-invoices';
+import { lusitana } from '@/app/ui/fonts';
+import { fetchRevenue, fetchLatestInvoices } from '@/app/lib/data'; // Pastikan path ini benar
+
+export default async function Page() {
+  // Ambil data dari "database" (mock data dulu biasanya)
+  const revenue = await fetchRevenue();
+  const latestInvoices = await fetchLatestInvoices();
+
+  return (
+    <main>
+      <h1 className={`${lusitana.className} mb-4 text-xl md:text-2xl`}>
+        Dashboard
+      </h1>
+      <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+        {/* Di sini nanti tempat Card buat Total Revenue, Invoices, dll */}
+      </div>
+      <div className="mt-6 grid grid-cols-1 gap-6 md:grid-cols-4 lg:grid-cols-8">
+        {/* Komponen Chart yang tadi kita benerin error-nya */}
+        <RevenueChart revenue={revenue} />
+        <LatestInvoices latestInvoices={latestInvoices} />
+      </div>
+    </main>
+  );
 }
