@@ -1,14 +1,22 @@
 import '@/app/ui/global.css';
-import { lusitana } from "@/app/ui/fonts";
+import { inter } from '@/app/ui/fonts';
+import { cookies } from 'next/headers';
 
-export default function RootLayout({
+export const dynamic = 'force-dynamic';
+
+export default async function RootLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  const lang: 'id' | 'en' =
+    (await cookies()).get('lang')?.value === 'en' ? 'en' : 'id';
+
   return (
-    <html lang="en">
-      <body className={`${lusitana.className} antialiased`}>{children}</body>
+    <html lang={lang}>
+      <body className={`${inter.className} antialiased`}>
+        {children}
+      </body>
     </html>
   );
 }

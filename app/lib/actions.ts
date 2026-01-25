@@ -1,72 +1,101 @@
 'use server';
 
-import { signIn, signOut } from '@/auth';
+import { signIn } from '@/auth';
 import { AuthError } from 'next-auth';
-import { redirect } from 'next/navigation';
-import { z } from 'zod';
-import { sql } from '@vercel/postgres';
+import postgres from 'postgres';
 import { revalidatePath } from 'next/cache';
+import { redirect } from 'next/navigation';
 
-// 1. Skema Validasi untuk Create Invoice
-const FormSchema = z.object({
-  id: z.string(),
-  customerId: z.string(),
-  amount: z.coerce.number(),
-  status: z.enum(['pending', 'paid']),
-  date: z.string(),
-});
+const sql = postgres(process.env.POSTGRES_URL!, { ssl: 'require' });
 
-const CreateInvoice = FormSchema.omit({ id: true, date: true });
+/* =========================
+   AUTH
+========================= */
 
-// 2. Fungsi untuk Membuat Invoice Baru (Versi Perbaikan)
-export async function createInvoice(formData: FormData): Promise<void> {
-  const { customerId, amount, status } = CreateInvoice.parse({
-    customerId: formData.get('customerId'),
-    amount: formData.get('amount'),
-    status: formData.get('status'),
-  });
-
-  const amountInCents = amount * 100;
-  const date = new Date().toISOString().split('T')[0];
-
-  try {
-    await sql`
-      INSERT INTO invoices (customer_id, amount, status, date)
-      VALUES (${customerId}, ${amountInCents}, ${status}, ${date})
-    `;
-  } catch (error) {
-    // Karena return type-nya Promise<void>, kita gunakan console.error 
-    // atau throw error agar sesuai dengan standar Server Action tanpa state
-    console.error('Database Error:', error);
-    throw new Error('Database Error: Gagal Membuat Invoice.');
-  }
-
-  revalidatePath('/dashboard/invoices');
-  redirect('/dashboard/invoices');
-}
-
-// 3. Fungsi Autentikasi
 export async function authenticate(
   prevState: string | undefined,
   formData: FormData,
 ) {
   try {
-    await signIn('credentials', formData); 
+    await signIn('credentials', formData);
   } catch (error) {
     if (error instanceof AuthError) {
       switch (error.type) {
         case 'CredentialsSignin':
-          return 'Email atau Kata Sandi salah.';
+          return 'Invalid credentials.';
         default:
-          return 'Terjadi kesalahan yang tidak terduga.';
+          return 'Something went wrong.';
       }
     }
     throw error;
   }
 }
 
-// 4. Fungsi Logout
-export async function logout() {
-  await signOut();
-  redirect('/login');
+/* =========================
+   CREATE INVOICE
+========================= */
+
+export async function createInvoice(formData: FormData) {
+  const customerId = formData.get('customerId')?.toString();
+  const amountStr = formData.get('amount')?.toString();
+  const status = formData.get('status')?.toString();
+
+  if (!customerId || !amountStr || !status) {
+    throw new Error('Missing fields');
+  }
+
+  const amount = Math.round(Number(amountStr) * 100);
+
+  await sql`
+    INSERT INTO invoices (customer_id, amount, status, date)
+    VALUES (${customerId}, ${amount}, ${status}, NOW())
+  `;
+
+  revalidatePath('/dashboard/invoices');
+  redirect('/dashboard/invoices');
+}
+
+/* =========================
+   UPDATE INVOICE
+========================= */
+
+export async function updateInvoice(id: string, formData: FormData) {
+  const customerId = formData.get('customerId')?.toString();
+  const amountStr = formData.get('amount')?.toString();
+  const status = formData.get('status')?.toString();
+
+  if (!customerId || !amountStr || !status) {
+    throw new Error('Missing fields');
+  }
+
+  const amount = Math.round(Number(amountStr) * 100);
+
+  await sql`
+    UPDATE invoices
+    SET customer_id = ${customerId},
+        amount = ${amount},
+        status = ${status}
+    WHERE id = ${id}
+  `;
+
+  revalidatePath('/dashboard/invoices');
+  redirect('/dashboard/invoices');
+}
+
+
+/* =========================
+   DELETE INVOICE
+========================= */
+
+export async function deleteInvoice(formData: FormData) {
+  const id = formData.get('id')?.toString();
+
+  if (!id) return;
+
+  await sql`
+    DELETE FROM invoices
+    WHERE id = ${id}
+  `;
+
+  revalidatePath('/dashboard/invoices');
 }

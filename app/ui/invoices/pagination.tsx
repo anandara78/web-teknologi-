@@ -3,60 +3,74 @@
 import { ArrowLeftIcon, ArrowRightIcon } from '@heroicons/react/24/outline';
 import clsx from 'clsx';
 import Link from 'next/link';
-import { generatePagination } from '@/app/lib/utils';
 import { usePathname, useSearchParams } from 'next/navigation';
+import { generatePagination } from '@/app/lib/utils';
+import { t } from '@/app/lib/i18n/i18n';
 
-export default function Pagination({ totalPages }: { totalPages: number }) {
+export default function Pagination({
+  lang,
+  currentPage,
+  totalPages,
+}: {
+  lang: 'id' | 'en';
+  currentPage: number;
+  totalPages: number;
+}) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const currentPage = Number(searchParams.get('page')) || 1;
+  const tr = t(lang);
+
   const allPages = generatePagination(currentPage, totalPages);
 
-  const createPageURL = (pageNumber: number | string) => {
-    const params = new URLSearchParams(searchParams);
-    params.set('page', pageNumber.toString());
+  function createPageURL(page: number | string) {
+    const params = new URLSearchParams(searchParams.toString());
+    params.set('page', page.toString());
+    // ❌ JANGAN SIMPAN LANG DI URL
+    params.delete('lang');
     return `${pathname}?${params.toString()}`;
-  };
+  }
 
   return (
-    <>
-      <div className="inline-flex">
-        <PaginationArrow
-          direction="left"
-          href={createPageURL(currentPage - 1)}
-          isDisabled={currentPage <= 1}
-        />
+    <div className="inline-flex">
+      <PaginationArrow
+        direction="left"
+        href={createPageURL(currentPage - 1)}
+        isDisabled={currentPage <= 1}
+        label={tr.prev}
+      />
 
-        <div className="flex -space-x-px">
-          {allPages.map((page, index) => {
-            let position: 'first' | 'last' | 'single' | 'middle' | undefined;
+      <div className="flex -space-x-px">
+        {allPages.map((page, index) => {
+          let position: 'first' | 'last' | 'single' | 'middle' | undefined;
 
-            if (index === 0) position = 'first';
-            if (index === allPages.length - 1) position = 'last';
-            if (allPages.length === 1) position = 'single';
-            if (page === '...') position = 'middle';
+          if (index === 0) position = 'first';
+          if (index === allPages.length - 1) position = 'last';
+          if (allPages.length === 1) position = 'single';
+          if (page === '...') position = 'middle';
 
-            return (
-              <PaginationNumber
-                key={`${page}-${index}`}
-                href={createPageURL(page)}
-                page={page}
-                position={position}
-                isActive={currentPage === page}
-              />
-            );
-          })}
-        </div>
-
-        <PaginationArrow
-          direction="right"
-          href={createPageURL(currentPage + 1)}
-          isDisabled={currentPage >= totalPages}
-        />
+          return (
+            <PaginationNumber
+              key={`${page}-${index}`}
+              href={createPageURL(page)}
+              page={page}
+              position={position}
+              isActive={currentPage === page}
+            />
+          );
+        })}
       </div>
-    </>
+
+      <PaginationArrow
+        direction="right"
+        href={createPageURL(currentPage + 1)}
+        isDisabled={currentPage >= totalPages}
+        label={tr.next}
+      />
+    </div>
   );
 }
+
+/* ================= NUMBER ================= */
 
 function PaginationNumber({
   page,
@@ -89,14 +103,18 @@ function PaginationNumber({
   );
 }
 
+/* ================= ARROW ================= */
+
 function PaginationArrow({
   href,
   direction,
   isDisabled,
+  label,
 }: {
   href: string;
   direction: 'left' | 'right';
   isDisabled?: boolean;
+  label: string;
 }) {
   const className = clsx(
     'flex h-10 w-10 items-center justify-center rounded-md border',
@@ -116,9 +134,11 @@ function PaginationArrow({
     );
 
   return isDisabled ? (
-    <div className={className}>{icon}</div>
+    <div className={className} aria-label={label}>
+      {icon}
+    </div>
   ) : (
-    <Link className={className} href={href}>
+    <Link className={className} href={href} aria-label={label}>
       {icon}
     </Link>
   );

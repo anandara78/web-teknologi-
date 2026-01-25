@@ -1,4 +1,4 @@
-import { clsx } from 'clsx';
+import clsx from 'clsx';
 import Link from 'next/link';
 import { lusitana } from '@/app/ui/fonts';
 
@@ -19,7 +19,7 @@ export default function Breadcrumbs({
         {breadcrumbs.map((breadcrumb, index) => (
           <li
             key={breadcrumb.href}
-            aria-current={breadcrumb.active}
+            aria-current={breadcrumb.active ? 'page' : undefined}
             className={clsx(
               breadcrumb.active ? 'text-gray-900' : 'text-gray-500',
             )}

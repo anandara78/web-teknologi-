@@ -1,23 +1,17 @@
 import Form from '@/app/ui/invoices/create-form';
-import Breadcrumbs from '@/app/ui/invoices/breadcrumbs';
 import { fetchCustomers } from '@/app/lib/data';
+import { cookies } from 'next/headers';
+
+export const dynamic = 'force-dynamic';
 
 export default async function Page() {
-    const customers = await fetchCustomers();
+  // ===== ambil lang dari COOKIE =====
+  const cookieStore = cookies();
+  const langCookie = (await cookieStore).get('lang')?.value;
+  const lang: 'id' | 'en' = langCookie === 'en' ? 'en' : 'id';
 
-    return (
-        <main>
-            <Breadcrumbs
-            breadcrumbs={[
-                { label: 'Invoices', href: '/dashboard/invoices' },
-                {
-                    label: 'Create Invoice',
-                    href: '/dashboard/invoices/create',
-                    active: true,
-                },
-            ]}
-            />
-            <Form customers={customers} />
-        </main>
-    );
+  // ===== data =====
+  const customers = await fetchCustomers();
+
+  return <Form lang={lang} customers={customers} />;
 }
