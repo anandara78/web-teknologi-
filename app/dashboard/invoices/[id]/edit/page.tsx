@@ -8,21 +8,29 @@ import { cookies } from 'next/headers';
 export default async function Page({
   params,
 }: {
-  params: { id: string };
+  // 1. Definisikan params sebagai Promise sesuai standar Next.js terbaru
+  params: Promise<{ id: string }>;
 }) {
-  const { id } = params;
+  // 2. "Unwrap" params menggunakan await
+  const { id } = await params;
 
   if (!id) {
     throw new Error('Invoice ID is missing from route params');
   }
 
-  // ===== ambil lang dari COOKIE =====
-  const lang: 'id' | 'en' =
-    (await cookies()).get('lang')?.value === 'en' ? 'en' : 'id';
+  // 3. Cookies juga harus di-await di versi terbaru
+  const cookieStore = await cookies();
+  const lang: 'id' | 'en' = cookieStore.get('lang')?.value === 'en' ? 'en' : 'id';
 
-  // ===== data =====
-  const invoice = await fetchInvoiceById(id);
-  const customers = await fetchCustomers();
+  // 4. Ambil data (menggunakan Promise.all agar lebih efisien)
+  const [invoice, customers] = await Promise.all([
+    fetchInvoiceById(id),
+    fetchCustomers(),
+  ]);
+
+  if (!invoice) {
+    throw new Error('Invoice tidak ditemukan');
+  }
 
   return <Form lang={lang} invoice={invoice} customers={customers} />;
 }
