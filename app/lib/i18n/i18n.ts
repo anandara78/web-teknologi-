@@ -50,7 +50,7 @@ export const translations = {
     welcome: 'Welcome!',
     landingDesc: 'This is a learning website for the',
     courseName: 'Web Technology course',
-    lecturer: 'Lecturer:',
+    lecturer: 'Lecturer: ',
     lecturerName: 'Adhitya Ahmad Pradypta, S.Kom., M.T.I.',
     login: 'Log in',
 
@@ -125,7 +125,7 @@ export const translations = {
     welcome: 'Selamat Datang!',
     landingDesc: 'Ini adalah situs web pembelajaran untuk',
     courseName: 'mata kuliah Web Teknologi',
-    lecturer: 'Dosen Pengampu:',
+    lecturer: 'Dosen Pengampu: ',
     lecturerName: 'Adhitya Ahmad Pradypta, S.Kom., M.T.I.',
     login: 'Masuk',
 
